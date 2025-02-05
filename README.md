@@ -43,7 +43,7 @@ pip install instagrapi requests moviepy schedule imageio
 Once you've set up the configuration, simply run the script:
 
 ```bash
-python instagram_video_reposter.py
+python main.py
 ```
 
 The script will:
