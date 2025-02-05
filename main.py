@@ -30,7 +30,6 @@ SCHEDULE_INTERVAL_MINUTES = 30
 REPOSTED_DB_FILE = "reposted_media.json"
 # ---------------------------------
 
-
 def ensure_download_dir():
     """Create the directory to store downloaded videos if it doesn't exist."""
     if not os.path.exists(DOWNLOAD_DIR):
@@ -86,15 +85,22 @@ def login_to_instagram():
 def sanitize_caption_for_filename(caption, max_length=50):
     """
     Clean the caption so it can be safely used as part of a filename.
+    Removes newlines, forbidden characters, and all '@' symbols.
     Parameters:
         caption (str): The original caption.
         max_length (int): Maximum length for the sanitized caption.
     Returns:
         str: A filename-safe version of the caption.
     """
-    safe_caption = re.sub(r'[\r\n]+', ' ', caption)   # Remove newlines
-    safe_caption = re.sub(r'[<>:"/\\|?*]+', '', safe_caption)  # Remove forbidden chars
+    # Remove newlines
+    safe_caption = re.sub(r'[\r\n]+', ' ', caption)
+    # Remove forbidden characters
+    safe_caption = re.sub(r'[<>:"/\\|?*]+', '', safe_caption)
+    # Remove all '@' symbols
+    safe_caption = safe_caption.replace('@', '')
+    # Trim whitespace
     safe_caption = safe_caption.strip()
+    # Truncate if too long
     if len(safe_caption) > max_length:
         safe_caption = safe_caption[:max_length] + "..."
     return safe_caption if safe_caption else "untitled"
@@ -125,7 +131,6 @@ def download_video(cl, media_pk):
         print("[ERROR] No video_url found.")
         return None, None
 
-    # Build a safe filename
     safe_caption = sanitize_caption_for_filename(caption_text)
     filename = f"{safe_caption}_{media_pk}.mp4"
     local_path = os.path.join(DOWNLOAD_DIR, filename)
@@ -186,7 +191,6 @@ def find_one_video_over_10k_likes(cl, reposted_pks):
     """
     try:
         my_user_id = cl.user_id
-        # following is returned as a dict of user_id -> user info
         following = cl.user_following(my_user_id, amount=FOLLOW_CHECK_LIMIT)
     except Exception as e:
         print(f"[ERROR] Could not fetch following list: {e}")
@@ -259,11 +263,17 @@ def main():
 
         # Random delay between 30 and 120 minutes
         delay_minutes = random.randint(30, 120)
-        print(f"[INFO] Next run in {delay_minutes} minutes.")
-        
+
+        # Compute exact next run time
+        next_run_dt = datetime.datetime.now() + datetime.timedelta(minutes=delay_minutes)
+        next_run_str = next_run_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        print(f"[INFO] Next run in {delay_minutes} minute(s). Scheduled for: {next_run_str}")
+
         # Sleep for that many minutes (convert to seconds)
         time.sleep(delay_minutes * 60)
 
 
 if __name__ == "__main__":
     main()
+
