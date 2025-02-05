@@ -8,7 +8,7 @@ This script automates the process of reposting Instagram videos with more than *
 
 - **Automatic Reposting**: Finds videos with 10k+ likes and reposts them to your account 🔁.
 - **Avoid Duplicates**: Keeps track of reposted media to avoid reposting the same video 🛑.
-- **Scheduled Posts**: Runs automatically at a random interval (between: **30 and 120 minutes**) 🕒.
+- **Scheduled Posts**: Runs automatically at random interval (between: **30 and 120 minutes**) 🕒.
 - **Video Download and Upload**: Downloads videos and re-uploads them with the same caption ✨.
 - **Optimized for Engagement**: Focuses on high-likes content to increase visibility 🚀.
 
