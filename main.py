@@ -30,10 +30,12 @@ SCHEDULE_INTERVAL_MINUTES = 30
 REPOSTED_DB_FILE = "reposted_media.json"
 # ---------------------------------
 
+
 def ensure_download_dir():
     """Create the directory to store downloaded videos if it doesn't exist."""
     if not os.path.exists(DOWNLOAD_DIR):
         os.makedirs(DOWNLOAD_DIR)
+
 
 def load_reposted_db():
     """
@@ -51,6 +53,7 @@ def load_reposted_db():
         print(f"[ERROR] Could not load reposted DB: {e}")
         return set()
 
+
 def save_reposted_db(reposted_pks):
     """
     Save the set of reposted media PKs to a JSON file.
@@ -62,6 +65,7 @@ def save_reposted_db(reposted_pks):
             json.dump(list(reposted_pks), f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"[ERROR] Could not save reposted DB: {e}")
+
 
 def login_to_instagram():
     """
@@ -78,6 +82,7 @@ def login_to_instagram():
         print(f"[ERROR] Login failed: {e}")
         return None
 
+
 def sanitize_caption_for_filename(caption, max_length=50):
     """
     Clean the caption so it can be safely used as part of a filename.
@@ -87,12 +92,13 @@ def sanitize_caption_for_filename(caption, max_length=50):
     Returns:
         str: A filename-safe version of the caption.
     """
-    safe_caption = re.sub(r'[\r\n]+', ' ', caption)  # Remove newlines
-    safe_caption = re.sub(r'[<>:"/\\|?*]+', '', safe_caption)  # Remove forbidden characters
+    safe_caption = re.sub(r'[\r\n]+', ' ', caption)   # Remove newlines
+    safe_caption = re.sub(r'[<>:"/\\|?*]+', '', safe_caption)  # Remove forbidden chars
     safe_caption = safe_caption.strip()
     if len(safe_caption) > max_length:
         safe_caption = safe_caption[:max_length] + "..."
     return safe_caption if safe_caption else "untitled"
+
 
 def download_video(cl, media_pk):
     """
@@ -119,7 +125,7 @@ def download_video(cl, media_pk):
         print("[ERROR] No video_url found.")
         return None, None
 
-    # Build a safe filename using part of the caption and the media PK
+    # Build a safe filename
     safe_caption = sanitize_caption_for_filename(caption_text)
     filename = f"{safe_caption}_{media_pk}.mp4"
     local_path = os.path.join(DOWNLOAD_DIR, filename)
@@ -144,6 +150,7 @@ def download_video(cl, media_pk):
     print(f"[INFO] Saved video to: {local_path}")
     return local_path, caption_text
 
+
 def reupload_video(cl, video_path, caption):
     """
     Re-upload the downloaded video with the same caption.
@@ -161,15 +168,16 @@ def reupload_video(cl, video_path, caption):
     except Exception as e:
         error_msg = str(e)
         if "moviepy" in error_msg.lower():
-            print("[ERROR] Video upload failed: Please ensure that moviepy>=1.0.3 is installed and that ffmpeg is installed and in your PATH.")
+            print("[ERROR] Video upload failed: Ensure moviepy>=1.0.3 and ffmpeg installed & in PATH.")
         else:
             print(f"[ERROR] Video upload failed: {e}")
         return False
 
+
 def find_one_video_over_10k_likes(cl, reposted_pks):
     """
     Scan the accounts you follow for the first single-video post with >10k likes
-    that has not already been reposted.
+    that hasn't been reposted yet.
     Parameters:
         cl (Client): An authenticated instagrapi.Client instance.
         reposted_pks (set): Set of media PKs that have already been reposted.
@@ -178,7 +186,7 @@ def find_one_video_over_10k_likes(cl, reposted_pks):
     """
     try:
         my_user_id = cl.user_id
-        # following is returned as a dict mapping user_id to user info
+        # following is returned as a dict of user_id -> user info
         following = cl.user_following(my_user_id, amount=FOLLOW_CHECK_LIMIT)
     except Exception as e:
         print(f"[ERROR] Could not fetch following list: {e}")
@@ -208,10 +216,10 @@ def find_one_video_over_10k_likes(cl, reposted_pks):
                 print(f"[DEBUG] Post by @{username} is not a single video.")
     return None
 
+
 def scheduled_job(client, reposted_pks):
     """
-    The scheduled job that runs every 30 minutes.
-    Searches for a qualifying video and, if found, downloads and re-uploads it.
+    The job that finds a qualifying video and, if found, downloads and re-uploads it.
     Parameters:
         client (Client): The logged-in instagrapi.Client instance.
         reposted_pks (set): Set of already reposted media PKs.
@@ -219,7 +227,7 @@ def scheduled_job(client, reposted_pks):
     print("[INFO] Searching for a qualifying single-video post with >10k likes...")
     result = find_one_video_over_10k_likes(client, reposted_pks)
     if result is None:
-        print("[INFO] No suitable video found during this run.")
+        print("[INFO] No suitable video found this run.")
         return
     media_pk, like_count, username = result
     print(f"[INFO] Processing video from @{username} with pk={media_pk} and {like_count} likes.")
@@ -236,6 +244,7 @@ def scheduled_job(client, reposted_pks):
         except Exception as e:
             print(f"[ERROR] Could not remove file '{local_path}': {e}")
 
+
 def main():
     ensure_download_dir()
     reposted_pks = load_reposted_db()
@@ -244,15 +253,17 @@ def main():
         print("[ERROR] Exiting because login failed.")
         return
 
-    # Run the scheduled job immediately at startup
-    scheduled_job(client, reposted_pks)
-
-    # Then schedule the job to run every SCHEDULE_INTERVAL_MINUTES minutes.
-    schedule.every(SCHEDULE_INTERVAL_MINUTES).minutes.do(scheduled_job, client, reposted_pks)
-    print(f"[INFO] Scheduled job every {SCHEDULE_INTERVAL_MINUTES} minutes. Press Ctrl+C to exit.")
     while True:
-        schedule.run_pending()
-        time.sleep(1)
+        # Run the job once
+        scheduled_job(client, reposted_pks)
+
+        # Random delay between 30 and 120 minutes
+        delay_minutes = random.randint(30, 120)
+        print(f"[INFO] Next run in {delay_minutes} minutes.")
+        
+        # Sleep for that many minutes (convert to seconds)
+        time.sleep(delay_minutes * 60)
+
 
 if __name__ == "__main__":
     main()
